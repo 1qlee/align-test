@@ -1,216 +1,269 @@
-import './App.css'
-import { useRef, useState } from 'react';
-import { gridData } from './data/grid';
-import { gsap } from 'gsap';
-import { useGSAP } from '@gsap/react';
-import { Draggable } from 'gsap/Draggable';
-import clsx from 'clsx';
+import "./App.css";
+import { useRef, useState } from "react";
+import { gridData } from "./data/grid";
+import { gsap } from "gsap";
+import CustomBounce from "gsap/CustomBounce";
+import CustomEase from "gsap/CustomEase";
+import { Flip } from "gsap/Flip";
+import { useGSAP } from "@gsap/react";
+import { Draggable } from "gsap/Draggable";
+import clsx from "clsx";
+import { easingOptions } from "./data/easing";
 
-gsap.registerPlugin(useGSAP, Draggable);
+gsap.registerPlugin(useGSAP, Draggable, CustomEase, CustomBounce, Flip);
 
 function App() {
-  const [draggedItem, setDraggedItem] = useState<number | null>(null);
+  const [gridItems, setGridItems] = useState(gridData);
+  const [flipDuration, setFlipDuration] = useState(0.2);
+  const [flipEase, setFlipEase] = useState("none");
+  const [flipEaseDirection, setFlipEaseDirection] = useState("out");
+  const flipState = useRef<Flip.FlipState | null>(null);
+  const draggedTile = useRef<HTMLElement | null>(null);
+  const prevHitTile = useRef<HTMLElement | null>(null);
   const tileRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
 
-  useGSAP(() => {
-    // the max area taken up by a dragged tile
-    let maxOverlapArea = 0;
-    // the tile that is being hovered by a dragged tile and has maxOverlapArea
-    let overlappedTileIndex: number | null = null;
-    // the tile that was previously hovered by a dragged tile and had the maxOverlapArea
-    let previouslyOverlappedTile: HTMLElement | null = null; 
+  useGSAP(
+    () => {
+      const filteredRefs = tileRefs.current.filter(
+        (ref) => ref?.dataset.locked === "false"
+      );
 
-    tileRefs.current.forEach(item => {
-      if (item && item.dataset.locked === "false") { 
-        Draggable.create(item, { 
-          type: "x,y",
-          bounds: gridContainerRef.current, 
-          inertia: false,
-          edgeResistance: 0.75,
-          onPress: function() {
-            if (item.dataset.index) {
-              setDraggedItem(+item.dataset.index);
-            }
+      Draggable.create(filteredRefs, {
+        bounds: gridContainerRef.current,
+        edgeResistance: 0.5,
+        onPress: function () {
+          draggedTile.current = this.target;
 
-            gsap.set(item.parentElement, {
-              borderColor: "gray",
-              overwrite: true
-            })
+          gsap.to(this.target, {
+            scale: 1.1,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+            duration: 0.2,
+          });
 
-            gsap.to(item, {
-              duration: 0.2,
-              ease: "power1",
-              scale: 0.9,
-            })
-          },
-          onRelease: function() {
-            gsap.to(item.parentElement, {
-              duration: 0.2,
-              borderColor: "transparent",
-              overwrite: true
-            })
-            
-            gsap.to(item, {
-              duration: 0.2,
-              scale: 1,
-            })
+          gsap.to(this.target.parentElement, {
+            borderColor: "orange",
+            duration: 0.2,
+          });
+        },
+        onRelease: function () {
+          gsap.to(this.target, {
+            scale: 1,
+            boxShadow: "none",
+            delay: flipDuration,
+            duration: 0.2,
+          });
+          gsap.to(this.target.parentElement, {
+            borderColor: "transparent",
+            delay: flipDuration,
+            duration: 0.2,
+          });
+        },
+        onDrag: function () {
+          var i = tileRefs.current.length;
+          let highestCoverage = 0;
+          let hitTileWithHighestCoverage = null;
 
-            // On release, un-animate any currently animated tile
-            if (previouslyOverlappedTile) {
-              gsap.to(previouslyOverlappedTile.parentElement, {
-                duration: 0.2,
-                borderColor: "transparent",
-                overwrite: true,
-              })
-              gsap.to(previouslyOverlappedTile, {
-                duration: 0.2,
-                ease: "power1",
-                scale: 1
-              });
-              previouslyOverlappedTile = null; // Reset the tracking
-            }
-            maxOverlapArea = 0; // Reset for the next drag
-            overlappedTileIndex = null; // Reset for the next drag
-          },
-          onDrag: function () {
-            maxOverlapArea = 0;
-            let currentMostOverlappedTile: HTMLSpanElement | null = null;
+          while (--i > -1) {
+            if (this.hitTest(tileRefs.current[i], "0%")) {
+              const hitTile = tileRefs.current[i];
 
-            // Get the bounding rectangle of the dragged item
-            const draggedRect = item.getBoundingClientRect();
+              if (hitTile?.dataset.locked === "true") {
+                continue; // Skip locked tiles
+              }
 
-            // Iterate through all other tileRefs
-            tileRefs.current.forEach((tile) => {
-              // Ensure the tile exists and is not the dragged item itself
-              if (tile && tile !== item && tile.dataset.locked === "false" && tile.parentElement) {
-                const tileRect = tile.parentElement.getBoundingClientRect();
-
-                // Check for intersection
-                // An intersection occurs if:
-                // 1. The right edge of the dragged item is greater than the left edge of the other item AND
-                // 2. The left edge of the dragged item is less than the right edge of the other item AND
-                // 3. The bottom edge of the dragged item is greater than the top edge of the other item AND
-                // 4. The top edge of the dragged item is less than the bottom edge of the other item
-                if (
-                  draggedRect.right > tileRect.left &&
-                  draggedRect.left < tileRect.right &&
-                  draggedRect.bottom > tileRect.top &&
-                  draggedRect.top < tileRect.bottom
-                ) {
-                  const intersectionLeft = Math.max(draggedRect.left, tileRect.left);
-                  const intersectionRight = Math.min(draggedRect.right, tileRect.right);
-                  const intersectionTop = Math.max(draggedRect.top, tileRect.top);
-                  const intersectionBottom = Math.min(draggedRect.bottom, tileRect.bottom);
-
-                  const intersectionWidth = Math.max(0, intersectionRight - intersectionLeft);
-                  const intersectionHeight = Math.max(0, intersectionBottom - intersectionTop);
-
-                  const currentOverlapArea = intersectionWidth * intersectionHeight;
-
-                  if (currentOverlapArea > maxOverlapArea) {
-                    maxOverlapArea = currentOverlapArea;
-                    currentMostOverlappedTile = tile; // Keep track of the actual tile element
-
-                    if (tile.dataset.index) {
-                      overlappedTileIndex = +tile.dataset.index;
-                    }
+              // Check for the percentage of overlap, from 100% down to 1%
+              for (let p = 100; p >= 1; p--) {
+                if (this.hitTest(hitTile, `${p}%`)) {
+                  if (p > highestCoverage) {
+                    highestCoverage = p;
+                    hitTileWithHighestCoverage = hitTile;
                   }
-                  
+                  // Once we've found the highest overlap for this tile, we can break the inner loop
+                  break;
                 }
               }
-            });
-
-            // If there's a new most overlapped tile and it's different from the previously animated one
-            if (currentMostOverlappedTile && currentMostOverlappedTile !== previouslyOverlappedTile) {
-              // Un-animate the previously animated tile
-              if (previouslyOverlappedTile) {
-                gsap.to(previouslyOverlappedTile.parentElement, {
-                  duration: 0.2,
-                  borderColor: "transparent",
-                  overwrite: true,
-                })
-                gsap.to(previouslyOverlappedTile, {
-                  duration: 0.2,
-                  ease: "power1",
-                  scale: 1
-                });
-              }
-
-              // Animate the new most overlapped tile
-              gsap.to(currentMostOverlappedTile, {
-                duration: 0.2,
-                ease: "power1",
-                scale: 0.9
-              });
-
-              // Type assertion here: Tell TypeScript that currentMostOverlappedTile is an HTMLSpanElement
-              // and therefore has parentElement.
-              // We've already ensured it's not null with the outer 'if' condition.
-              gsap.to((currentMostOverlappedTile as HTMLSpanElement).parentElement, {
-                duration: 0.2,
-                borderColor: "gray",
-                overwrite: true,
-              });
-
-              // Update the previouslyOverlappedTile
-              previouslyOverlappedTile = currentMostOverlappedTile;
-            } else if (!currentMostOverlappedTile && previouslyOverlappedTile) {
-              // If no tile is currently overlapped, and there was a previously animated tile, un-animate it
-              gsap.to(previouslyOverlappedTile, {
-                duration: 0.2,
-                ease: "power1",
-                scale: 1
-              });
-              gsap.to(previouslyOverlappedTile.parentElement, {
-                duration: 0.2,
-                borderColor: "transparent",
-                overwrite: true,
-              });
-              previouslyOverlappedTile = null;
             }
-          },
-          onDragEnd: function () {
-            gsap.to(this.target, {
-              duration: 0.2,
-              scale: 1,
+          }
+
+          if (hitTileWithHighestCoverage !== prevHitTile.current) {
+            // Scale down the PREVIOUS winner if it exists
+            if (prevHitTile.current) {
+              gsap.to(prevHitTile.current.parentElement, {
+                borderColor: "transparent",
+                duration: 0.2,
+                overwrite: "auto",
+              });
+
+              gsap.to(prevHitTile.current, {
+                scale: 1,
+                duration: 0.2,
+                overwrite: "auto",
+              });
+            }
+
+            if (hitTileWithHighestCoverage) {
+              gsap.to(hitTileWithHighestCoverage.parentElement, {
+                borderColor: "orange",
+                duration: 0.2,
+                overwrite: "auto",
+              });
+              gsap.to(hitTileWithHighestCoverage, {
+                scale: 0.9,
+                duration: 0.2,
+                overwrite: "auto",
+              });
+            }
+
+            flipState.current = Flip.getState(tileRefs.current);
+            prevHitTile.current = hitTileWithHighestCoverage;
+          }
+        },
+        onDragEnd: function () {
+          if (prevHitTile.current) {
+            const newGridItems = structuredClone(gridItems);
+            const draggedIndex = parseInt(this.target.dataset.index!, 10);
+            const overlappedIndex = parseInt(
+              prevHitTile.current.dataset.index!,
+              10
+            );
+
+            // Swap the positions of the dragged tile and the overlapped tile
+            const tempDraggedIndex = newGridItems.findIndex(
+              (item) => item.index === draggedIndex
+            );
+            const tempOverlappedIndex = newGridItems.findIndex(
+              (item) => item.index === overlappedIndex
+            );
+            const temp = newGridItems[tempDraggedIndex];
+            newGridItems[tempDraggedIndex] = newGridItems[tempOverlappedIndex];
+            newGridItems[tempOverlappedIndex] = temp;
+
+            setGridItems(newGridItems);
+
+            // reset position for flip
+            gsap.set(draggedTile.current, {
               x: 0,
               y: 0,
-              onComplete: () => {
-                setDraggedItem(null);
-              }
-            })
+            });
+
+            gsap.to(prevHitTile.current.parentElement, {
+              borderColor: "transparent",
+              delay: flipDuration,
+              duration: 0.2,
+            });
+
+            gsap.to(draggedTile.current, {
+              scale: 1,
+              boxShadow: "none",
+              duration: 0.2,
+            });
+          } else {
+            gsap.to(draggedTile.current, {
+              x: 0,
+              y: 0,
+              duration: 0.2,
+            });
           }
-        })
+
+          prevHitTile.current = null;
+        },
+      });
+    },
+    { dependencies: [gridItems] }
+  );
+
+  useGSAP(
+    () => {
+      if (flipState.current) {
+        console.log("useGSAP Flip effect");
+        // Apply the flip state to animate the grid items
+        Flip.from(flipState.current, {
+          duration: flipDuration,
+          scale: true,
+          ease: `${flipEase}.${flipEaseDirection}`,
+        });
+
+        gsap.to(tileRefs.current, {
+          scale: 1,
+          delay: flipDuration,
+          duration: 0.2,
+        });
       }
-    })
-  })
+    },
+    { dependencies: [gridItems] }
+  );
 
   return (
-    <div className="bg-white shadow-lg rounded-xl p-2 md:p-8 max-w-full w-full sm:max-w-md lg:max-w-lg">
-      <h1 className="text-3xl font-extrabold text-gray-800 mb-6 text-center">Align</h1>
-      <div ref={gridContainerRef} className="grid grid-cols-5 gap-1">
-        {gridData.map((item, index) => (
+    <div className="bg-white shadow-lg rounded-xl p-2 md:p-8 w-max h-max">
+      <a target="_blank" href="https://gsap.com/docs/v3/Eases">
+        Learn more about easing
+      </a>
+      <fieldset className="flex justify-center items-center gap-2 w-full">
+        <label className="block text-black">Ease function:</label>
+        <select
+          value={flipEase}
+          onChange={(e) => setFlipEase(e.target.value)}
+          className="block border border-gray-300 rounded-md shadow-sm
+                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                       bg-white text-gray-900 text-base"
+        >
+          {easingOptions.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </fieldset>
+      <fieldset className="flex justify-center items-center gap-2 w-full">
+        <label className="block text-black">Ease direction:</label>
+        <select
+          value={flipEaseDirection}
+          onChange={(e) => setFlipEaseDirection(e.target.value)}
+          className="block border border-gray-300 rounded-md shadow-sm
+                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                       bg-white text-gray-900 text-base"
+        >
+          <option value="out">out</option>
+          <option value="in">in</option>
+          <option value="inOut">inOut</option>
+        </select>
+      </fieldset>
+      <fieldset className="flex justify-center items-center gap-2 w-full">
+        <label className="block text-black">Swap duration:</label>
+        <div className="flex gap-1">
+          <input
+            value={flipDuration}
+            onChange={(e) => setFlipDuration(+e.target.value)}
+            type="range"
+            max={1}
+            step={0.05}
+            min={0.1}
+          />
+          <span className="text-black">{flipDuration * 1000} ms</span>
+        </div>
+      </fieldset>
+      <div
+        ref={gridContainerRef}
+        className="grid grid-cols-5 gap-2 bg-orange-100 p-2 border border-orange-900 rounded-lg"
+      >
+        {gridItems.map((item, index) => (
           <div
-            key={`cell-${index}`}
-            className={clsx(
-              draggedItem === item.index ? "border-dashed" : "border-dashed",
-              `grid place-items-center relative border border-transparent border-orange-900 aspect-square rounded-full h-[64px] w-[64px]`
-            )}
+            key={`cell-${item.index}`}
+            className="grid border-dashed place-items-center relative border-2 border-transparent border-orange-900 aspect-square rounded-full h-[96px] w-[96px]"
           >
             <span
-              ref={el => {
+              ref={(el) => {
                 tileRefs.current[index] = el;
               }}
               data-locked={item.locked}
               data-index={item.index}
               className={clsx(
-                item.locked ?
-                  'bg-orange-100 text-orange-900' :
-                  'text-orange-100 bg-orange-600 border-1 border-b-4 border-orange-700'
-                ,
+                item.locked
+                  ? "bg-orange-100 text-orange-900 z-0"
+                  : "text-orange-100 bg-orange-700 border-1 border-b-4 border-orange-900 z-2",
                 `relative flex items-center justify-center
-                font-bold text-lg
+                font-bold text-[48px]
                 aspect-square rounded-full
                 transition-colors duration-200
                 select-none
@@ -223,7 +276,7 @@ function App() {
         ))}
       </div>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

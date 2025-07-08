@@ -6,7 +6,7 @@ export const gridData = [
   { locked: true, string: "E", index: 4 },
   { locked: true, string: "F", index: 5 },
   { locked: false, string: "G", index: 6 },
-  { locked: true, string: "H", index: 7 },
+  { locked: false, string: "H", index: 7 },
   { locked: false, string: "I", index: 8 },
   { locked: true, string: "J", index: 9 },
   { locked: true, string: "K", index: 10 },
@@ -23,5 +23,5 @@ export const gridData = [
   { locked: true, string: "V", index: 21 },
   { locked: true, string: "W", index: 22 },
   { locked: true, string: "X", index: 23 },
-  { locked: false, string: "Y", index: 24 }
+  { locked: false, string: "Y", index: 24 },
 ];
