@@ -266,7 +266,7 @@ function App() {
           <div
             key={`cell-${item.index}`}
             className={clsx(
-              `grid border-dashed place-items-center relative border-2 border-transparent border-orange-700 aspect-square rounded-full`
+              `grid border-dashed aspect-square place-items-center relative border-2 border-transparent border-orange-700 aspect-square rounded-full`
             )}
           >
             <span
@@ -280,7 +280,8 @@ function App() {
                   ? "bg-orange-100 text-orange-800 z-0"
                   : "text-black bg-white border-1 border-b-4 border-orange-900 z-1",
                 `flex items-center justify-center
-                font-bold text-[36px] p-4
+                font-bold overflow-hidden
+                p-2 sm:p-4 tile
                 aspect-square rounded-full
                 transition-colors duration-200
                 select-none
