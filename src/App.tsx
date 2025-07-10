@@ -33,8 +33,8 @@ function App() {
         bounds: gridContainerRef.current,
         edgeResistance: 0.5,
         onPress: function () {
-          console.log("pressed");
           draggedTile.current = this.target;
+          console.log(draggedTile.current?.style.zIndex);
 
           gsap.to(this.target, {
             scale: 1.1,
@@ -51,7 +51,6 @@ function App() {
         },
         onRelease: function () {
           flipState.current = Flip.getState(tileRefs.current);
-          console.log(flipDuration);
 
           if (prevHitTile.current) {
             gsap.to(this.target, {
@@ -62,6 +61,7 @@ function App() {
             gsap.set(this.target.parentElement, {
               borderColor: "transparent",
               delay: flipDuration,
+              duration: 0.2,
             });
           } else {
             gsap.to(this.target, {
@@ -71,9 +71,10 @@ function App() {
               y: 0,
               duration: 0.2,
             });
-            gsap.set(this.target.parentElement, {
+            gsap.to(this.target.parentElement, {
               borderColor: "transparent",
               delay: 0.2,
+              duration: 0.2,
             });
           }
         },
@@ -81,6 +82,12 @@ function App() {
           var i = tileRefs.current.length;
           let highestCoverage = 0;
           let hitTileWithHighestCoverage = null;
+
+          console.log(draggedTile.current?.style.zIndex);
+
+          // if (!draggedTile.current?.style.zIndex) {
+          //   console.log(zIndexRef.current);
+          // }
 
           while (--i > -1) {
             if (this.hitTest(tileRefs.current[i], "0%")) {
@@ -164,9 +171,10 @@ function App() {
               y: 0,
             });
 
+            // make sure the hit tile has a lower z index than dragged
             gsap.set(prevHitTile.current, {
               zIndex:
-                parseInt(draggedTile.current?.style.zIndex || "0", 10) - 1,
+                parseInt(draggedTile.current?.style.zIndex || "1", 10) - 1,
             });
 
             gsap.set(prevHitTile.current.parentElement, {
@@ -192,7 +200,6 @@ function App() {
     () => {
       if (flipState.current) {
         console.log("useGSAP Flip effect");
-        console.log(draggedTile.current?.style.zIndex);
         // Apply the flip state to animate the grid items
         Flip.from(flipState.current, {
           duration: flipDuration,
@@ -281,7 +288,7 @@ function App() {
                   : "text-black bg-white border-1 border-b-4 border-orange-900 z-1",
                 `flex items-center justify-center
                 font-bold overflow-hidden
-                p-2 sm:p-4 tile
+                p-2 xs:p-4 tile
                 aspect-square rounded-full
                 transition-colors duration-200
                 select-none
