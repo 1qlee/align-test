@@ -14,9 +14,9 @@ gsap.registerPlugin(useGSAP, Draggable, CustomEase, CustomBounce, Flip);
 
 function App() {
   const [gridItems, setGridItems] = useState(gridData);
-  const [flipDuration, setFlipDuration] = useState(0.2);
-  const [flipEase, setFlipEase] = useState("none");
-  const [flipEaseDirection, setFlipEaseDirection] = useState("out");
+  const [flipDuration, setFlipDuration] = useState(0.25);
+  const [flipEase, setFlipEase] = useState("power1");
+  const [flipEaseDirection, setFlipEaseDirection] = useState("inOut");
   const flipState = useRef<Flip.FlipState | null>(null);
   const draggedTile = useRef<HTMLElement | null>(null);
   const prevHitTile = useRef<HTMLElement | null>(null);
@@ -33,31 +33,49 @@ function App() {
         bounds: gridContainerRef.current,
         edgeResistance: 0.5,
         onPress: function () {
+          console.log("pressed");
           draggedTile.current = this.target;
 
           gsap.to(this.target, {
             scale: 1.1,
             boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
             duration: 0.2,
+            overwrite: true,
           });
 
           gsap.to(this.target.parentElement, {
             borderColor: "orange",
             duration: 0.2,
+            overwrite: true,
           });
         },
         onRelease: function () {
-          gsap.to(this.target, {
-            scale: 1,
-            boxShadow: "none",
-            delay: flipDuration,
-            duration: 0.2,
-          });
-          gsap.to(this.target.parentElement, {
-            borderColor: "transparent",
-            delay: flipDuration,
-            duration: 0.2,
-          });
+          flipState.current = Flip.getState(tileRefs.current);
+          console.log(flipDuration);
+
+          if (prevHitTile.current) {
+            gsap.to(this.target, {
+              scale: 1,
+              boxShadow: "none",
+              duration: flipDuration,
+            });
+            gsap.set(this.target.parentElement, {
+              borderColor: "transparent",
+              delay: flipDuration,
+            });
+          } else {
+            gsap.to(this.target, {
+              scale: 1,
+              boxShadow: "none",
+              x: 0,
+              y: 0,
+              duration: 0.2,
+            });
+            gsap.set(this.target.parentElement, {
+              borderColor: "transparent",
+              delay: 0.2,
+            });
+          }
         },
         onDrag: function () {
           var i = tileRefs.current.length;
@@ -115,7 +133,6 @@ function App() {
               });
             }
 
-            flipState.current = Flip.getState(tileRefs.current);
             prevHitTile.current = hitTileWithHighestCoverage;
           }
         },
@@ -147,36 +164,35 @@ function App() {
               y: 0,
             });
 
-            gsap.to(prevHitTile.current.parentElement, {
-              borderColor: "transparent",
-              delay: flipDuration,
-              duration: 0.2,
+            gsap.set(prevHitTile.current, {
+              zIndex:
+                parseInt(draggedTile.current?.style.zIndex || "0", 10) - 1,
             });
 
-            gsap.to(draggedTile.current, {
-              scale: 1,
-              boxShadow: "none",
-              duration: 0.2,
+            gsap.set(prevHitTile.current.parentElement, {
+              borderColor: "transparent",
+              delay: flipDuration,
             });
-          } else {
-            gsap.to(draggedTile.current, {
-              x: 0,
-              y: 0,
-              duration: 0.2,
-            });
+
+            // gsap.to(draggedTile.current, {
+            //   scale: 1,
+            //   boxShadow: "none",
+            //   duration: 0.2,
+            // });
           }
 
           prevHitTile.current = null;
         },
       });
     },
-    { dependencies: [gridItems] }
+    { dependencies: [gridItems, flipDuration] }
   );
 
   useGSAP(
     () => {
       if (flipState.current) {
         console.log("useGSAP Flip effect");
+        console.log(draggedTile.current?.style.zIndex);
         // Apply the flip state to animate the grid items
         Flip.from(flipState.current, {
           duration: flipDuration,
@@ -186,8 +202,7 @@ function App() {
 
         gsap.to(tileRefs.current, {
           scale: 1,
-          delay: flipDuration,
-          duration: 0.2,
+          duration: flipDuration,
         });
       }
     },
@@ -250,7 +265,9 @@ function App() {
         {gridItems.map((item, index) => (
           <div
             key={`cell-${item.index}`}
-            className="grid border-dashed place-items-center relative border-2 border-transparent border-orange-900 aspect-square rounded-full h-[96px] w-[96px]"
+            className={clsx(
+              `grid border-dashed place-items-center relative border-2 border-transparent border-orange-700 aspect-square rounded-full`
+            )}
           >
             <span
               ref={(el) => {
@@ -260,10 +277,10 @@ function App() {
               data-index={item.index}
               className={clsx(
                 item.locked
-                  ? "bg-orange-100 text-orange-900 z-0"
-                  : "text-orange-100 bg-orange-700 border-1 border-b-4 border-orange-900 z-2",
-                `relative flex items-center justify-center
-                font-bold text-[48px]
+                  ? "bg-orange-100 text-orange-800 z-0"
+                  : "text-black bg-white border-1 border-b-4 border-orange-900 z-1",
+                `flex items-center justify-center
+                font-bold text-[36px] p-4
                 aspect-square rounded-full
                 transition-colors duration-200
                 select-none
