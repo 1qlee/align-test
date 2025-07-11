@@ -22,6 +22,7 @@ function App() {
   const prevHitTile = useRef<HTMLElement | null>(null);
   const tileRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
+  const zIndexRef = useRef<string | undefined>(undefined);
 
   useGSAP(
     () => {
@@ -34,6 +35,7 @@ function App() {
         edgeResistance: 0.5,
         onPress: function () {
           draggedTile.current = this.target;
+          zIndexRef.current = draggedTile.current?.style.zIndex;
           console.log(draggedTile.current?.style.zIndex);
 
           gsap.to(this.target, {
@@ -82,12 +84,14 @@ function App() {
           var i = tileRefs.current.length;
           let highestCoverage = 0;
           let hitTileWithHighestCoverage = null;
+          const draggedTileZindex = draggedTile.current?.style.zIndex;
 
-          console.log(draggedTile.current?.style.zIndex);
-
-          // if (!draggedTile.current?.style.zIndex) {
-          //   console.log(zIndexRef.current);
-          // }
+          // when a swap is already occuring
+          if (!draggedTileZindex || draggedTileZindex < zIndexRef.current!) {
+            gsap.set(draggedTile.current, {
+              zIndex: zIndexRef.current,
+            });
+          }
 
           while (--i > -1) {
             if (this.hitTest(tileRefs.current[i], "0%")) {
@@ -189,6 +193,9 @@ function App() {
             // });
           }
 
+          zIndexRef.current = draggedTile.current
+            ? draggedTile.current.style.zIndex
+            : undefined;
           prevHitTile.current = null;
         },
       });
