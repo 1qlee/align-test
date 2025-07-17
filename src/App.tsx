@@ -225,14 +225,6 @@ function App() {
 
   return (
     <div className="bg-white shadow-lg rounded-xl p-2 md:p-8 w-max h-max">
-      <iframe
-        loading="lazy"
-        id="game-area"
-        src="https://sqnces.com"
-        width="100%"
-        height="700"
-        allow="clipboard-write"
-      ></iframe>
       <a target="_blank" href="https://gsap.com/docs/v3/Eases">
         Learn more about easing
       </a>
