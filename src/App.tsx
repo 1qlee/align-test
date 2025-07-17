@@ -1,14 +1,14 @@
 import "./App.css";
-import { useRef, useState } from "react";
-import { gridData } from "./data/grid";
-import { gsap } from "gsap";
 import CustomBounce from "gsap/CustomBounce";
 import CustomEase from "gsap/CustomEase";
-import { Flip } from "gsap/Flip";
-import { useGSAP } from "@gsap/react";
-import { Draggable } from "gsap/Draggable";
 import clsx from "clsx";
+import { Draggable } from "gsap/Draggable";
+import { Flip } from "gsap/Flip";
 import { easingOptions } from "./data/easing";
+import { gridData } from "./data/grid";
+import { gsap } from "gsap";
+import { useGSAP } from "@gsap/react";
+import { useRef, useState } from "react";
 
 gsap.registerPlugin(useGSAP, Draggable, CustomEase, CustomBounce, Flip);
 
@@ -225,6 +225,14 @@ function App() {
 
   return (
     <div className="bg-white shadow-lg rounded-xl p-2 md:p-8 w-max h-max">
+      <iframe
+        loading="lazy"
+        id="game-area"
+        src="https://sqnces.com"
+        width="100%"
+        height="700"
+        allow="clipboard-write"
+      ></iframe>
       <a target="_blank" href="https://gsap.com/docs/v3/Eases">
         Learn more about easing
       </a>
